@@ -419,6 +419,62 @@
                 padding: 25px 20px;
             }
         }
+
+        .pin-dots {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .pin-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid #d1a85c;
+            background: transparent;
+            transition: background 0.15s;
+        }
+        .pin-dot.filled {
+            background: #d1a85c;
+        }
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .pin-key {
+            background: #252b32;
+            color: #e0e0e0;
+            border: 1px solid #3a4149;
+            border-radius: 10px;
+            padding: 18px 10px;
+            font-size: 22px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        .pin-key:hover, .pin-key:active {
+            background: rgba(209, 168, 92, 0.15);
+            border-color: #d1a85c;
+            color: #d1a85c;
+        }
+        .pin-error {
+            text-align: center;
+            color: #ef5350;
+            font-size: 14px;
+            min-height: 20px;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+        .pin-jugador-name {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #d1a85c;
+            margin-bottom: 4px;
+        }
     </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
@@ -453,6 +509,35 @@
         </div>
 
         <button class="btn" onclick="entrar()">Entrar →</button>
+    </div>
+
+    <!-- PANTALLA PIN -->
+    <div class="screen" id="screen-pin">
+        <h1>🔐 Código de acceso</h1>
+        <p class="subtitle">Introduce tu PIN personal</p>
+        <div class="pin-jugador-name" id="pin-jugador-name"></div>
+        <div class="pin-dots" id="pin-dots">
+            <div class="pin-dot" id="dot-0"></div>
+            <div class="pin-dot" id="dot-1"></div>
+            <div class="pin-dot" id="dot-2"></div>
+            <div class="pin-dot" id="dot-3"></div>
+        </div>
+        <div class="pin-error" id="pin-error"></div>
+        <div class="pin-keypad">
+            <button class="pin-key" onclick="pinTecla('1')">1</button>
+            <button class="pin-key" onclick="pinTecla('2')">2</button>
+            <button class="pin-key" onclick="pinTecla('3')">3</button>
+            <button class="pin-key" onclick="pinTecla('4')">4</button>
+            <button class="pin-key" onclick="pinTecla('5')">5</button>
+            <button class="pin-key" onclick="pinTecla('6')">6</button>
+            <button class="pin-key" onclick="pinTecla('7')">7</button>
+            <button class="pin-key" onclick="pinTecla('8')">8</button>
+            <button class="pin-key" onclick="pinTecla('9')">9</button>
+            <button class="pin-key" style="visibility:hidden"></button>
+            <button class="pin-key" onclick="pinTecla('0')">0</button>
+            <button class="pin-key" onclick="pinBorrar()">⌫</button>
+        </div>
+        <button class="btn btn-secondary" style="margin-top:20px;" onclick="irA('screen-login')">← Volver</button>
     </div>
 
     <!-- ══════════════════════════════════════
@@ -576,15 +661,17 @@
 // ═══════════════════════════════════════════════
 let jugadorActual = '';
 let tipoSesion = '';
+let pinEntrada = '';
 
 const PINES = {
-     'Lara':    '1111',
-     'Dani':    '2222',
-     'Hugo':    '3333',
+    'Lara':    '1111',
+    'Dani':    '2222',
+    'Hugo':    '3333',
     'Roberto': '4444',
-     'Brais':   '5555',
-     'Iker':    '6666',
- };
+    'Brais':   '5555',
+    'Iker':    '6666',
+};
+
 const RPE_LABELS = [
     'Reposo total', 'Muy muy suave', 'Muy suave', 'Suave',
     'Moderado-suave', 'Moderado', 'Moderado-duro', 'Duro',
@@ -623,16 +710,50 @@ function irA(screenId) {
 function entrar() {
     const sel = document.getElementById('select-jugador');
     if (!sel.value) { mostrarAlerta('Por favor, selecciona tu nombre.', 'error'); return; }
-    jugadorActual = sel.value;
-    document.getElementById('welcome-box').textContent = '¡Hola, ' + jugadorActual + '! 👋';
-    irA('screen-menu');
+    pinEntrada = '';
+    actualizarDots();
+    document.getElementById('pin-error').textContent = '';
+    document.getElementById('pin-jugador-name').textContent = sel.value;
+    irA('screen-pin');
 }
 
 function cerrarSesion() {
     jugadorActual = '';
     tipoSesion = '';
+    pinEntrada = '';
     document.getElementById('select-jugador').value = '';
     irA('screen-login');
+}
+
+function pinTecla(digito) {
+    if (pinEntrada.length >= 4) return;
+    pinEntrada += digito;
+    actualizarDots();
+    if (pinEntrada.length === 4) setTimeout(verificarPin, 150);
+}
+
+function pinBorrar() {
+    pinEntrada = pinEntrada.slice(0, -1);
+    actualizarDots();
+    document.getElementById('pin-error').textContent = '';
+}
+
+function actualizarDots() {
+    for (let i = 0; i < 4; i++) {
+        document.getElementById('dot-' + i).classList.toggle('filled', i < pinEntrada.length);
+    }
+}
+
+function verificarPin() {
+    const jugador = document.getElementById('select-jugador').value;
+    if (pinEntrada === PINES[jugador]) {
+        jugadorActual = jugador;
+        document.getElementById('welcome-box').textContent = '¡Hola, ' + jugadorActual + '! 👋';
+        irA('screen-menu');
+    } else {
+        document.getElementById('pin-error').textContent = '❌ PIN incorrecto. Inténtalo de nuevo.';
+        setTimeout(() => { pinEntrada = ''; actualizarDots(); }, 600);
+    }
 }
 
 // ═══════════════════════════════════════════════
